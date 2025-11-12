@@ -11,53 +11,100 @@
     <div id="result"></div>
 
     <script>
-        document.getElementById('getLocationBtn').addEventListener('click', () => {
-            // 1. Geolocation APIが使えるか確認
-            if (!navigator.geolocation) {
-                document.getElementById('result').textContent = 'お使いのブラウザはGeolocation APIをサポートしていません。';
-                return;
-            }
+    // -----------------------------------------------------------------
+    // ⬇️ ステップ3でコピーした「WebアプリのURL」をここに貼り付ける ⬇️
+    // -----------------------------------------------------------------
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxCjo892OfZ-VTrP1OBrVsRNo0vbQPZRdOPsqUTDc4E2deZ88W_2EHsXr7-byt-uB3x/exec'; 
 
-            // 2. 位置情報を取得
-            // (成功コールバック, 失敗コールバック)
-            navigator.geolocation.getCurrentPosition(onSuccess, onError);
-        });
-
-        // 3. 成功時のコールバック
-        function onSuccess(position) {
-            const latitude = position.coords.latitude;    // 緯度
-            const longitude = position.coords.longitude;  // 経度
-            const accuracy = position.coords.accuracy;      // 精度 (メートル)
-
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = `
-                <p>位置情報の取得に成功しました。</p>
-                <p><strong>緯度 (Latitude):</strong> ${latitude}</p>
-                <p><strong>経度 (Longitude):</strong> ${longitude}</p>
-                <p><strong>精度 (Accuracy):</strong> ${accuracy} m</p>
-            `;
+    document.getElementById('getLocationBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            document.getElementById('result').textContent = 'お使いのブラウザはGeolocation APIをサポートしていません。';
+            return;
         }
 
-        // 4. 失敗時のコールバック
-        function onError(error) {
-            let errorMessage = '';
-            switch(error.code) {
-                case 1:
-                    errorMessage = '位置情報の利用が許可されませんでした。ブラウザの設定を確認してください。'; // PERMISSION_DENIED
-                    break;
-                case 2:
-                    errorMessage = '位置情報を特定できませんでした。電波状況などを確認してください。'; // POSITION_UNAVAILABLE
-                    break;
-                case 3:
-                    errorMessage = '位置情報の取得がタイムアウトしました。'; // TIMEOUT
-                    break;
-                default:
-                    errorMessage = `不明なエラーが発生しました (コード: ${error.code})`;
-                    break;
-            }
-            document.getElementById('result').textContent = errorMessage;
+        // -------------------------------------------------------------
+        // ▼【法的義務】▼
+        // 本来はここに、プライバシーポリシーへのリンクと
+        // 「位置情報をサーバーに記録することに同意しますか？」
+        // というチェックボックスを設け、同意を得る処理が必要です。
+        // ここでは、confirm() で簡易的に代用します。
+        // -------------------------------------------------------------
+        const consent = confirm(
+            '位置情報の利用に同意しますか？\n\n' +
+            '取得された位置情報は、サービスの品質向上のため、当社のサーバーに記録されます。\n' +
+            '（これはデモ用の同意文です）'
+        );
+
+        if (!consent) {
+            document.getElementById('result').textContent = '位置情報の利用に同意されませんでした。';
+            return;
         }
-    </script>
+
+        // 位置情報の取得を開始
+        document.getElementById('result').textContent = '位置情報を取得中...';
+        navigator.geolocation.getCurrentPosition(onSuccess, onError);
+    });
+
+    // 3. 成功時のコールバック (★修正版)
+    function onSuccess(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = `
+            <p>位置情報の取得に成功しました。</p>
+            <p><strong>緯度:</strong> ${latitude}</p>
+            <p><strong>経度:</strong> ${longitude}</p>
+            <p>...サーバーにデータを送信中...</p>
+        `;
+        
+        // ★取得したデータをGASに送信する
+        sendDataToGoogleSheet(latitude, longitude, accuracy);
+    }
+
+    // 4. 失敗時のコールバック (変更なし)
+    function onError(error) {
+        // (省略)
+    }
+
+    // 5. ★データをGASに送信する関数 (★新規追加)
+    async function sendDataToGoogleSheet(lat, lng, acc) {
+        
+        const dataToSend = {
+            latitude: lat,
+            longitude: lng,
+            accuracy: acc
+        };
+
+        try {
+            const response = await fetch(GAS_WEB_APP_URL, {
+                method: 'POST',
+                // GAS(doPost)はリダイレクトで応答を返す仕様のため、
+                // fetchの 'redirect' オプションを明示的に指定します。
+                redirect: 'follow', 
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // CORS回避のためtext/plainで送る
+                },
+                body: JSON.stringify(dataToSend) // データをJSON文字列として送信
+            });
+
+            // GASからの応答をJSONとして解析
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                document.getElementById('result').innerHTML += '<p>データの送信に成功しました。</p>';
+            } else {
+                throw new Error(result.message || '不明なエラー');
+            }
+
+        } catch (error) {
+            console.error('送信エラー:', error);
+            document.getElementById('result').innerHTML += `<p>送信に失敗しました: ${error.message}</p>`;
+        }
+    }
+</script>
 
 </body>
 </html>
+
