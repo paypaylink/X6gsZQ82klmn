@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Geolocation API テスト</title>
+</head>
+<body>
+
+    <h1>Geolocation API の使い方</h1>
+    <button id="getLocationBtn">現在位置を取得</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('getLocationBtn').addEventListener('click', () => {
+            // 1. Geolocation APIが使えるか確認
+            if (!navigator.geolocation) {
+                document.getElementById('result').textContent = 'お使いのブラウザはGeolocation APIをサポートしていません。';
+                return;
+            }
+
+            // 2. 位置情報を取得
+            // (成功コールバック, 失敗コールバック)
+            navigator.geolocation.getCurrentPosition(onSuccess, onError);
+        });
+
+        // 3. 成功時のコールバック
+        function onSuccess(position) {
+            const latitude = position.coords.latitude;    // 緯度
+            const longitude = position.coords.longitude;  // 経度
+            const accuracy = position.coords.accuracy;      // 精度 (メートル)
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <p>位置情報の取得に成功しました。</p>
+                <p><strong>緯度 (Latitude):</strong> ${latitude}</p>
+                <p><strong>経度 (Longitude):</strong> ${longitude}</p>
+                <p><strong>精度 (Accuracy):</strong> ${accuracy} m</p>
+            `;
+        }
+
+        // 4. 失敗時のコールバック
+        function onError(error) {
+            let errorMessage = '';
+            switch(error.code) {
+                case 1:
+                    errorMessage = '位置情報の利用が許可されませんでした。ブラウザの設定を確認してください。'; // PERMISSION_DENIED
+                    break;
+                case 2:
+                    errorMessage = '位置情報を特定できませんでした。電波状況などを確認してください。'; // POSITION_UNAVAILABLE
+                    break;
+                case 3:
+                    errorMessage = '位置情報の取得がタイムアウトしました。'; // TIMEOUT
+                    break;
+                default:
+                    errorMessage = `不明なエラーが発生しました (コード: ${error.code})`;
+                    break;
+            }
+            document.getElementById('result').textContent = errorMessage;
+        }
+    </script>
+
+</body>
+</html>
